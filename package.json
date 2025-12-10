@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node --watch src/routes/server.js",
     "start": "node src/routes/server.js",
-    "cli": "node cli.js",
+    "cli:user": "node src/cli/user-cli",
+    "cli:tenant": "node src/cli/tenant-cli",
     "lint": "standard",
     "lint:fix": "standard --fix"
   },

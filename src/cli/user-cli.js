@@ -10,7 +10,7 @@
  */
 
 import { MongoClient } from 'mongodb'
-import { TenantManager } from './src/domains/TenantManager.js'
+import { TenantManager } from '../domains/TenantManager.js'
 
 const MONGO_URL = process.env.MONGO_URL || 'mongodb://localhost:27017'
 
@@ -107,7 +107,7 @@ function showHelp () {
 UMA CLI
 
 Usage:
-  node cli.js <command> [options]
+  npm run cli:user <command> [options]
 
 Commands:
   add-user <tenantId> <username>    Add a user to a tenant
@@ -119,9 +119,9 @@ Commands:
   list-domains                      List all domains/tenants
 
 Examples:
-  node cli.js add-user tenant1 alice --email alice@example.com
-  node cli.js list-users tenant1
-  node cli.js list-domains
+  npm run cli:user -- add-user tenant1 alice --email alice@example.com
+  npm run cli:user --  cli.js list-users tenant1
+  npm run cli:user --  cli.js list-domains
 `)
 }
 
