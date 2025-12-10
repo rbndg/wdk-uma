@@ -1,8 +1,13 @@
 /**
  * UMA Handlers Index
  *
- * Export all handler classes and factory function.
+ * Export all handler classes and lazy-loading executor.
  */
+
+import { PubKeyHandler } from './PubKeyHandler.js';
+import { LnurlpHandler } from './LnurlpHandler.js';
+import { PayReqHandler } from './PayReqHandler.js';
+import { UtxoCallbackHandler } from './UtxoCallbackHandler.js';
 
 export { BaseHandler } from './BaseHandler.js';
 export { PubKeyHandler } from './PubKeyHandler.js';
@@ -11,35 +16,30 @@ export { PayReqHandler } from './PayReqHandler.js';
 export { UtxoCallbackHandler } from './UtxoCallbackHandler.js';
 
 /**
- * Create all UMA handlers from a UmaConfig instance
- *
- * @param {import('../UmaConfig.js').UmaConfig} config - UmaConfig instance
- * @returns {Object} Object with all handler functions ready for Fastify
+ * Handler name to class mapping
  */
+const handlerMap = {
+  handlerPubKeyRequest: PubKeyHandler,
+  handlerLnurlpRequest: LnurlpHandler,
+  handlerPayRequest: PayReqHandler,
+  handlerUtxoCallback: UtxoCallbackHandler,
+};
 
-import { PubKeyHandler } from './PubKeyHandler.js';
-import { LnurlpHandler } from './LnurlpHandler.js';
-import { PayReqHandler } from './PayReqHandler.js';
-import { UtxoCallbackHandler } from './UtxoCallbackHandler.js';
-
-export function createUmaHandlers(config) {
-  const pubKeyHandler = new PubKeyHandler(config);
-  const lnurlpHandler = new LnurlpHandler(config);
-  const payReqHandler = new PayReqHandler(config);
-  const utxoCallbackHandler = new UtxoCallbackHandler(config);
-
-  return {
-    handlePubKeyRequest: pubKeyHandler.getHandler(),
-    handleLnurlpRequest: lnurlpHandler.getHandler(),
-    handlePayRequest: payReqHandler.getHandler(),
-    handleUtxoCallback: utxoCallbackHandler.getHandler(),
-
-    // Also expose handler instances for direct access
-    handlers: {
-      pubKey: pubKeyHandler,
-      lnurlp: lnurlpHandler,
-      payReq: payReqHandler,
-      utxoCallback: utxoCallbackHandler,
-    },
-  };
-}
+/**
+ * Lazy-loading handler executor
+ *
+ * Creates handler instances on-demand and executes them.
+ * Usage: executeHandler.handlerPubKeyRequest(umaConfig, request, reply)
+ */
+export const executeHandler = new Proxy({}, {
+  get(target, prop) {
+    const HandlerClass = handlerMap[prop];
+    if (!HandlerClass) {
+      throw new Error(`Unknown handler: ${prop}`);
+    }
+    return async (umaConfig, request, reply) => {
+      const handler = new HandlerClass(umaConfig);
+      return handler.handle(request, reply);
+    };
+  }
+});

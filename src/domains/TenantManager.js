@@ -22,6 +22,7 @@ export class TenantManager {
    */
   constructor(options) {
     this.tenantsTable = options.tenantsTable || 'tenants';
+    this._dbClient = options.dbClient
 
     this.db = options.dbClient.db(this.tenantsTable)
     this.keysTable = options.keysTable || 'tenant_keys';
@@ -63,7 +64,7 @@ export class TenantManager {
     for (const doc of tenantDocs) {
       const keys = await this._loadKeys(doc.id);
       if (keys) {
-        const tenant = Tenant.fromDocument(doc, keys);
+        const tenant = Tenant.fromDocument(doc, keys, this);
         this._cache.set(tenant.id, tenant);
         this._cacheByDomain.set(tenant.domain, tenant);
       }
@@ -215,21 +216,17 @@ export class TenantManager {
 
     const oldDomain = tenant.domain;
 
-    // Update tenant object
     tenant.update(updates);
 
-    // Update database
     await this.db.collection(this.tenantsTable).updateOne(
       { id: tenantId },
       { $set: tenant.toJSON() }
     );
 
-    // Update keys if provided
     if (updates.keys) {
       await this._saveKeys(tenantId, updates.keys);
     }
 
-    // Update cache
     if (tenant.isActive()) {
       this._cache.set(tenant.id, tenant);
       // Update domain cache if domain changed

@@ -12,6 +12,7 @@ import { TenantUmaConfig } from './TenantUmaConfig.js'
  * @property {string} signingPublicKey - Signing public key (hex)
  * @property {Uint8Array} encryptionPrivateKey - Encryption private key
  * @property {string} encryptionPublicKey - Encryption public key (hex)
+ * @property {TenantManger} manager - TenantManager
  */
 
 /**
@@ -42,6 +43,7 @@ export class Tenant {
    * @param {TenantConfig} config
    */
   constructor(config) {
+    this._manager = config.manager
     this.id = config.id;
     this.name = config.name;
     this.domain = config.domain;
@@ -65,6 +67,14 @@ export class Tenant {
     this.metadata = config.metadata || {};
     this.createdAt = config.createdAt || new Date();
     this.updatedAt = config.updatedAt || new Date();
+  }
+
+  get hostname() {
+    return this.domain.split('.')[0]
+  }
+
+  get db () {
+    return this._manager.db
   }
 
   /**
@@ -100,10 +110,11 @@ export class Tenant {
    * @param {Object} keys - Decrypted keys object
    * @returns {Tenant}
    */
-  static fromDocument(doc, keys) {
+  static fromDocument(doc, keys, manager) {
     return new Tenant({
       ...doc,
       keys,
+      manager
     });
   }
 
@@ -134,11 +145,29 @@ export class Tenant {
     this.updatedAt = new Date();
   }
 
-  async addUser(useObj) {
-    
+  async addUser(userObj) {
+    if (!userObj.username) {
+      throw new Error('Username is required')
+    }
+    const existing = await this.getUser(userObj.username)
+    if (existing) {
+      throw new Error(`User "${userObj.username}" already exists`)
+    }
+    const user = {
+      ...userObj,
+      tenantId: this.id,
+      createdAt: new Date()
+    }
+    await this.db.collection(this.tables.users).insertOne(user)
+    return user
   }
 
-  async getUser() {
+  async getUser(username) {
+    return await this.db.collection(this.tables.users).findOne({ username });
+  }
+
+  async getUsers() {
+    return await this.db.collection(this.tables.users).find({}).toArray();
   }
 
   async savePayment(payData) {

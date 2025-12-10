@@ -4,33 +4,41 @@
  * Registers all UMA protocol routes with the Fastify instance.
  */
 
-import wellKnownRoutes from './wellknown.js';
-import payReqRoutes from './payreq.js';
-import callbackRoutes from './callback.js';
+import { executeHandler } from '../uma/handlers/index.js';
+import { registerAdminRoutes } from './admin.js';
 
 /**
  * Register all UMA routes
  *
  * @param {import('fastify').FastifyInstance} fastify
- * @param {Object} handlers - Route handlers
- * @param {Function} handlers.handlePubKeyRequest - GET /.well-known/lnurlpubkey
- * @param {Function} handlers.handleLnurlpRequest - GET /.well-known/lnurlp/:username
- * @param {Function} handlers.handlePayRequest - POST /api/uma/payreq/:callbackId
- * @param {Function} handlers.handleUtxoCallback - POST /api/uma/utxocallback
+ * @param {import('../domains/TenantManager.js').TenantManager} opts.tenants
  */
-export async function registerUmaRoutes(fastify, handlers) {
-  await fastify.register(wellKnownRoutes, {
-    handlePubKeyRequest: handlers.handlePubKeyRequest,
-    handleLnurlpRequest: handlers.handleLnurlpRequest,
+export async function registerUmaRoutes(fastify, opts) {
+
+  // GET /.well-known/lnurlpubkey
+  fastify.get('/.well-known/lnurlpubkey', async (request, reply) => {
+    const umaConfig = request.tenant.getUmaConfig();
+    return executeHandler.handlerPubKeyRequest(umaConfig, request, reply);
   });
 
-  await fastify.register(payReqRoutes, {
-    handlePayRequest: handlers.handlePayRequest,
+  // GET /.well-known/lnurlp/:username
+  fastify.get('/.well-known/lnurlp/:username', async (request, reply) => {
+    const umaConfig = request.tenant.getUmaConfig();
+    return executeHandler.handlerLnurlpRequest(umaConfig, request, reply);
   });
 
-  await fastify.register(callbackRoutes, {
-    handleUtxoCallback: handlers.handleUtxoCallback,
+  // POST /api/uma/payreq/:callbackId
+  fastify.post('/api/uma/payreq/:callbackId', async (request, reply) => {
+    const umaConfig = request.tenant.getUmaConfig();
+    return executeHandler.handlerPayRequest(umaConfig, request, reply);
   });
+
+  // POST /api/uma/utxocallback
+  fastify.post('/api/uma/utxocallback', async (request, reply) => {
+    const umaConfig = request.tenant.getUmaConfig();
+    return executeHandler.handlerUtxoCallback(umaConfig, request, reply);
+  });
+
+  await registerAdminRoutes(fastify, opts)
+
 }
-
-export { wellKnownRoutes, payReqRoutes, callbackRoutes };
